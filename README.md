@@ -1,5 +1,7 @@
 # krilla
 
+**This is a temporary fork! Please see https://github.com/LaurenzV/krilla/issues/209 and linked work for upstreaming efforts.**
+
 [![Crates.io](https://img.shields.io/crates/v/krilla.svg)](https://crates.io/crates/krilla)
 [![Documentation](https://docs.rs/krilla/badge.svg)](https://docs.rs/krilla)
 

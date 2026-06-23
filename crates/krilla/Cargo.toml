@@ -1,9 +1,9 @@
 [package]
-name = "krilla"
-description = "A high-level crate for creating PDF files."
+name = "tmp-krilla-custom-metadata"
+description = "Temporary fork of krilla with custom PDF metadata support."
 categories = ["graphics", "multimedia"]
 keywords = ["pdf"]
-version = "0.8.2"
+version = "0.9.0-rc.1"
 authors = { workspace = true }
 edition = { workspace = true }
 repository = { workspace = true }
