@@ -351,9 +351,9 @@ impl Metadata {
         let mut by_prefix = std::collections::HashMap::new();
 
         for ns in namespaces {
-            // Predefined schemas are always serialized under their canonical
+            // Known schemas are always serialized under their canonical
             // prefix, so the user-supplied fields can't conflict.
-            if builtin_xmp_namespace(&ns.uri).is_some() {
+            if known_xmp_namespace(&ns.uri).is_some() {
                 continue;
             }
 
@@ -615,48 +615,20 @@ impl PageLayout {
     }
 }
 
-/// The namespaces xmp-writer can serialize natively. A user-supplied namespace
-/// with one of these URIs must be mapped to the corresponding built-in variant,
-/// since xmp-writer would otherwise declare the same namespace twice.
-static BUILTIN_XMP_NAMESPACES: &[XmpNamespace<'static>] = &[
-    XmpNamespace::Rdf,
-    XmpNamespace::DublinCore,
-    XmpNamespace::Xmp,
-    XmpNamespace::XmpRights,
-    XmpNamespace::XmpResourceRef,
-    XmpNamespace::XmpResourceEvent,
-    XmpNamespace::XmpVersion,
-    XmpNamespace::XmpJob,
-    XmpNamespace::XmpJobManagement,
-    XmpNamespace::XmpColorant,
-    XmpNamespace::XmpFont,
-    XmpNamespace::XmpDimensions,
-    XmpNamespace::XmpMedia,
-    XmpNamespace::XmpPaged,
-    XmpNamespace::XmpDynamicMedia,
-    XmpNamespace::XmpImage,
-    XmpNamespace::XmpIdq,
-    XmpNamespace::AdobePdf,
-    XmpNamespace::PdfAId,
-    XmpNamespace::PdfUAId,
-    XmpNamespace::PdfXId,
-    XmpNamespace::PdfAExtension,
-    XmpNamespace::PdfASchema,
-    XmpNamespace::PdfAProperty,
-    XmpNamespace::PdfAType,
-    XmpNamespace::PdfAField,
-];
-
 /// Returns the predefined xmp-writer namespace with the given URI, if any.
-fn builtin_xmp_namespace(uri: &str) -> Option<XmpNamespace<'static>> {
-    BUILTIN_XMP_NAMESPACES
+///
+/// A user-supplied namespace with the URI of a namespace that xmp-writer
+/// serializes natively must be mapped to the corresponding built-in variant,
+/// since xmp-writer would otherwise declare the same namespace twice.
+fn known_xmp_namespace(uri: &str) -> Option<XmpNamespace<'static>> {
+    XmpNamespace::PREDEFINED
         .iter()
         .find(|ns| ns.url() == uri)
         .cloned()
 }
 
 fn is_reserved_xmp_prefix(prefix: &str) -> bool {
-    BUILTIN_XMP_NAMESPACES
+    XmpNamespace::PREDEFINED
         .iter()
         .any(|ns| ns.prefix() == prefix)
 }
@@ -716,7 +688,7 @@ fn has_non_finite_real(value: &Value) -> bool {
 }
 
 pub(crate) fn build_xmp_namespace(ns: &Namespace) -> XmpNamespace<'_> {
-    builtin_xmp_namespace(&ns.uri).unwrap_or_else(|| {
+    known_xmp_namespace(&ns.uri).unwrap_or_else(|| {
         XmpNamespace::Custom(Box::new(CustomNamespace::new(
             ns.schema_name.as_deref().unwrap_or(ns.prefix.as_str()),
             ns.prefix.as_str(),

@@ -174,7 +174,7 @@ fn metadata_custom_xmp_factur_x(document: &mut Document) {
 /// predefined PDF/A schema from XMP 2005 on.
 #[snapshot(document, settings_19)]
 fn validate_pdf_a1_custom_xmp_builtin_namespace(document: &mut Document) {
-    let dm = Namespace::new("xmpDM", "http://ns.adobe.com/xap/1.0/DynamicMedia/")
+    let dm = Namespace::new("xmpDM", "http://ns.adobe.com/xmp/1.0/DynamicMedia/")
         .schema_name("XMP Dynamic Media")
         .add_description("scene", "Text", Category::External, "The name of the scene");
     let metadata = Metadata::new()
