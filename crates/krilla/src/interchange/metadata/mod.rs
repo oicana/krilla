@@ -16,7 +16,7 @@ use xmp_writer::{
 use crate::configure::{Configuration, PdfVersion, ValidationError, Validators};
 use crate::serialize::SerializeContext;
 
-use self::xmp::{Category, Namespace, Property, StructField, Value, XmpError};
+use self::xmp::{Category, Namespace, Property, Value, XmpError};
 
 /// Metadata for a PDF document.
 #[derive(Default, Clone, Debug)]
@@ -724,7 +724,7 @@ fn write_array<'n>(mut array: xmp_writer::Array<'_, 'n>, items: &'n [Value]) {
     }
 }
 
-fn write_struct<'n>(mut s: xmp_writer::Struct<'_, 'n>, fields: &'n [StructField]) {
+fn write_struct<'n>(mut s: xmp_writer::Struct<'_, 'n>, fields: &'n [Property]) {
     for field in fields {
         let element = s.element(field.name.as_str(), build_xmp_namespace(&field.namespace));
         write_value(element, &field.value);

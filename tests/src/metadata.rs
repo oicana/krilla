@@ -1,7 +1,7 @@
 use krilla::configure::ValidationError;
 use krilla::embed::{AssociationKind, EmbeddedFile, MimeType};
 use krilla::error::KrillaError;
-use krilla::metadata::xmp::{Category, Namespace, Property, StructField, Value, XmpError};
+use krilla::metadata::xmp::{Category, Namespace, Property, Value, XmpError};
 use krilla::metadata::{DateTime, Metadata, PageLayout, TextDirection};
 use krilla::Document;
 use krilla_macros::snapshot;
@@ -147,8 +147,8 @@ fn metadata_custom_xmp_basic(document: &mut Document) {
                 cc,
                 "derivedFrom",
                 Value::Struct(vec![
-                    StructField::new(mm.clone(), "DocumentID", Value::text("uuid:source-doc")),
-                    StructField::new(mm, "VersionID", Value::text("1.0")),
+                    Property::new(mm.clone(), "DocumentID", Value::text("uuid:source-doc")),
+                    Property::new(mm, "VersionID", Value::text("1.0")),
                 ]),
             ),
         ]);

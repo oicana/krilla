@@ -118,6 +118,9 @@ pub enum Category {
 }
 
 /// A single XMP property attached to a [`Namespace`].
+///
+/// Also used for the fields of a [`Value::Struct`], which are named values in
+/// a namespace just like top-level properties.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Property {
     /// The namespace this property belongs to.
@@ -130,28 +133,6 @@ pub struct Property {
 
 impl Property {
     /// Create a new XMP property.
-    pub fn new(namespace: Namespace, name: impl Into<String>, value: Value) -> Self {
-        Self {
-            namespace,
-            name: name.into(),
-            value,
-        }
-    }
-}
-
-/// A field of a [`Value::Struct`] value.
-#[derive(Debug, Clone, PartialEq)]
-pub struct StructField {
-    /// The namespace of this field.
-    pub namespace: Namespace,
-    /// The field name within its namespace.
-    pub name: String,
-    /// The field value.
-    pub value: Value,
-}
-
-impl StructField {
-    /// Create a new struct field.
     pub fn new(namespace: Namespace, name: impl Into<String>, value: Value) -> Self {
         Self {
             namespace,
@@ -189,8 +170,8 @@ pub enum Value {
     /// Each entry pairs an optional RFC 3066 language tag (`None` ⇒
     /// `x-default`) with its text value.
     LanguageAlternative(Vec<(Option<String>, String)>),
-    /// A struct value (`rdf:parseType="Resource"`).
-    Struct(Vec<StructField>),
+    /// A struct value (`rdf:parseType="Resource"`), given as its fields.
+    Struct(Vec<Property>),
 }
 
 impl Value {
