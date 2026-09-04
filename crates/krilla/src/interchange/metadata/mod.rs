@@ -8,6 +8,7 @@
 pub mod xmp;
 
 use pdf_writer::{Finish, Pdf, Ref, TextStr};
+use std::borrow::Cow;
 use std::cell::LazyCell;
 use xmp_writer::{
     CustomNamespace, LangId, Namespace as XmpNamespace, RdfCollectionType, Timezone, XmpWriter,
@@ -16,7 +17,7 @@ use xmp_writer::{
 use crate::configure::{Configuration, PdfVersion, ValidationError, Validators};
 use crate::serialize::SerializeContext;
 
-use self::xmp::{Category, Namespace, Property, Value, XmpError};
+use self::xmp::{Category, Namespace, Property, Value, ValueType, XmpError};
 
 /// Metadata for a PDF document.
 #[derive(Default, Clone, Debug)]
@@ -731,6 +732,21 @@ fn write_struct<'n>(mut s: xmp_writer::Struct<'_, 'n>, fields: &'n [Property]) {
     }
 }
 
+/// The value of `pdfaProperty:valueType` describing `value_type`.
+///
+/// The property is an "Open Choice of Text" (TechNote 0009, Section 4.4).
+fn pdfa_value_type(value_type: &ValueType) -> Cow<'static, str> {
+    match value_type {
+        ValueType::Simple(ty) => ty.as_str().into(),
+        ValueType::LanguageAlternative => "Lang Alt".into(),
+        ValueType::OpenChoice(ty) => format!("Open Choice of {}", ty.as_str()).into(),
+        ValueType::ClosedChoice(ty, _) => format!("Closed Choice of {}", ty.as_str()).into(),
+        ValueType::OrderedArray(item) => format!("seq {}", pdfa_value_type(item)).into(),
+        ValueType::UnorderedArray(item) => format!("bag {}", pdfa_value_type(item)).into(),
+        ValueType::AlternativeArray(item) => format!("alt {}", pdfa_value_type(item)).into(),
+    }
+}
+
 pub(crate) fn write_user_extension_schema(
     schemas: &mut xmp_writer::pdfa::PdfAExtSchemasWriter,
     ns: &Namespace,
@@ -761,7 +777,7 @@ pub(crate) fn write_user_extension_schema(
             properties
                 .add_property()
                 .name(desc.name.as_str())
-                .value_type(desc.value_type.as_str())
+                .value_type(&pdfa_value_type(&desc.value_type))
                 .category(desc.category == Category::Internal)
                 .description(desc.description.as_str());
         }

@@ -1,7 +1,9 @@
 use krilla::configure::ValidationError;
 use krilla::embed::{AssociationKind, EmbeddedFile, MimeType};
 use krilla::error::KrillaError;
-use krilla::metadata::xmp::{Category, Namespace, Property, Value, XmpError};
+use krilla::metadata::xmp::{
+    Namespace, Property, PropertyDescription, SimpleType, Value, XmpError,
+};
 use krilla::metadata::{DateTime, Metadata, PageLayout, TextDirection};
 use krilla::Document;
 use krilla_macros::snapshot;
@@ -63,45 +65,33 @@ fn metadata_pdf_20_author(document: &mut Document) {
     document.set_metadata(metadata);
 }
 
+fn text_description(name: &str, description: &str) -> PropertyDescription {
+    PropertyDescription::new(name, SimpleType::Text.into(), description)
+}
+
 fn cc_namespace() -> Namespace {
     Namespace::new("cc", "http://creativecommons.org/ns#")
         .schema_name("Creative Commons")
-        .add_description("license", "Text", Category::External, "License URL")
-        .add_description(
-            "attributionName",
-            "Text",
-            Category::External,
-            "Attribution name",
-        )
+        .add_description(text_description("license", "License URL"))
+        .add_description(text_description("attributionName", "Attribution name"))
 }
 
 fn factur_x_namespace() -> Namespace {
     Namespace::new("fx", "urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#")
         .schema_name("Factur-X PDFA Extension Schema")
-        .add_description(
-            "DocumentType",
-            "Text",
-            Category::External,
-            "Type of the embedded XML",
-        )
-        .add_description(
+        .add_description(text_description("DocumentType", "Type of the embedded XML"))
+        .add_description(text_description(
             "DocumentFileName",
-            "Text",
-            Category::External,
             "File name of the embedded XML",
-        )
-        .add_description(
+        ))
+        .add_description(text_description(
             "Version",
-            "Text",
-            Category::External,
             "Version of the Factur-X profile",
-        )
-        .add_description(
+        ))
+        .add_description(text_description(
             "ConformanceLevel",
-            "Text",
-            Category::External,
             "Conformance level of the invoice",
-        )
+        ))
 }
 
 #[snapshot(document, settings_5)]
@@ -176,7 +166,7 @@ fn metadata_custom_xmp_factur_x(document: &mut Document) {
 fn validate_pdf_a1_custom_xmp_builtin_namespace(document: &mut Document) {
     let dm = Namespace::new("xmpDM", "http://ns.adobe.com/xmp/1.0/DynamicMedia/")
         .schema_name("XMP Dynamic Media")
-        .add_description("scene", "Text", Category::External, "The name of the scene");
+        .add_description(text_description("scene", "The name of the scene"));
     let metadata = Metadata::new()
         .creation_date(datetime())
         .language("en".to_string())

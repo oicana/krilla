@@ -24,8 +24,8 @@
 //! ## PDF/A
 //!
 //! Any property in a custom namespace must be described in a PDF/A
-//! extension schema. Populate [`Namespace::property_descriptions`] for
-//! every property you write.
+//! extension schema. Populate [`Namespace::property_descriptions`] with a
+//! [`PropertyDescription`] for every property you write.
 //!
 //! [`Document::finish`]: crate::document::Document::finish
 //! [`Metadata`]: super::Metadata
@@ -42,7 +42,7 @@ use super::DateTime;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Namespace {
     /// The XML prefix (e.g. `"fx"`).
-    /// 
+    ///
     /// Ignored if the URI is natively known to krilla.
     pub prefix: String,
     /// The namespace URI (e.g. `"urn:factur-x:pdfa:CrossIndustryDocument:invoice:1p0#"`).
@@ -50,6 +50,8 @@ pub struct Namespace {
     /// Optional human-readable schema name for the PDF/A extension schema
     /// description. Defaults to `"<prefix> schema"`.
     pub schema_name: Option<String>,
+    /// Optional human-readable description of the schema.
+    pub description: Option<String>,
     /// PDF/A extension schema property descriptions.
     ///
     /// Required for any property name written under this namespace
@@ -64,6 +66,7 @@ impl Namespace {
             prefix: prefix.into(),
             uri: uri.into(),
             schema_name: None,
+            description: None,
             property_descriptions: Vec::new(),
         }
     }
@@ -75,20 +78,15 @@ impl Namespace {
         self
     }
 
+    /// Set the human-readable description of the schema.
+    pub fn schema_description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+
     /// Add a property description used for the PDF/A extension schema.
-    pub fn add_description(
-        mut self,
-        name: impl Into<String>,
-        value_type: impl Into<String>,
-        category: Category,
-        description: impl Into<String>,
-    ) -> Self {
-        self.property_descriptions.push(PropertyDescription {
-            name: name.into(),
-            value_type: value_type.into(),
-            category,
-            description: description.into(),
-        });
+    pub fn add_description(mut self, description: PropertyDescription) -> Self {
+        self.property_descriptions.push(description);
         self
     }
 }
@@ -98,14 +96,172 @@ impl Namespace {
 pub struct PropertyDescription {
     /// The property name (e.g. `"DocumentType"`).
     pub name: String,
-    /// The value type. Either a built-in XMP type (`"Text"`, `"Integer"`,
-    /// `"Date"`, ...) or a custom value type.
-    pub value_type: String,
+    /// The type of the property's value.
+    pub value_type: ValueType,
     /// Whether the property is generated internally by the producer or
     /// supplied externally by the user.
     pub category: Category,
+    /// Whether the property must be present.
+    ///
+    /// PDF/A extension schemas cannot express this, so it is only used when
+    /// describing the metadata in RELAX NG.
+    pub required: bool,
     /// Human-readable description of the property.
     pub description: String,
+}
+
+impl PropertyDescription {
+    /// Create a new property description.
+    pub fn new(
+        name: impl Into<String>,
+        value_type: ValueType,
+        description: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            value_type,
+            category: Category::External,
+            required: false,
+            description: description.into(),
+        }
+    }
+
+    /// Mark the property as being generated internally by the producer.
+    pub fn internal(mut self) -> Self {
+        self.category = Category::Internal;
+        self
+    }
+
+    /// Mark the property as required.
+    pub fn required(mut self) -> Self {
+        self.required = true;
+        self
+    }
+}
+
+/// The type of an XMP value.
+///
+/// This mirrors the XMP type system: the simple types of the XMP
+/// specification, the three generic array types and language alternatives.
+/// Structures cannot be described yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ValueType {
+    /// A simple value.
+    Simple(SimpleType),
+    /// A value drawn from an open-ended set of recommended values.
+    OpenChoice(SimpleType),
+    /// A value drawn from a fixed set. Contains the allowed values.
+    ClosedChoice(SimpleType, Vec<String>),
+    /// An ordered array (`rdf:Seq`) of the contained type.
+    OrderedArray(Box<ValueType>),
+    /// An unordered array (`rdf:Bag`) of the contained type.
+    UnorderedArray(Box<ValueType>),
+    /// An alternative array (`rdf:Alt`) of the contained type.
+    AlternativeArray(Box<ValueType>),
+    /// A language alternative: an `rdf:Alt` of `xml:lang`-tagged text.
+    LanguageAlternative,
+}
+
+impl ValueType {
+    /// An ordered array (`rdf:Seq`) of the given type.
+    pub fn ordered_array(item: impl Into<ValueType>) -> Self {
+        Self::OrderedArray(Box::new(item.into()))
+    }
+
+    /// An unordered array (`rdf:Bag`) of the given type.
+    pub fn unordered_array(item: impl Into<ValueType>) -> Self {
+        Self::UnorderedArray(Box::new(item.into()))
+    }
+
+    /// An alternative array (`rdf:Alt`) of the given type.
+    pub fn alternative_array(item: impl Into<ValueType>) -> Self {
+        Self::AlternativeArray(Box::new(item.into()))
+    }
+
+    /// A value drawn from a fixed set.
+    pub fn closed_choice(
+        ty: SimpleType,
+        values: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        Self::ClosedChoice(ty, values.into_iter().map(Into::into).collect())
+    }
+}
+
+impl From<SimpleType> for ValueType {
+    fn from(value: SimpleType) -> Self {
+        Self::Simple(value)
+    }
+}
+
+/// A simple XMP value type.
+///
+/// `Text`, `Boolean`, `Integer`, `Real` and `Date` are the core simple types;
+/// the rest are derived from them and are all stored as text, but carry
+/// additional meaning.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum SimpleType {
+    /// Unconstrained text.
+    Text,
+    /// A boolean, written as `True` or `False`.
+    Boolean,
+    /// An integer.
+    Integer,
+    /// A floating-point number.
+    Real,
+    /// A date and time.
+    Date,
+    /// The name of an agent, i.e. a piece of software.
+    AgentName,
+    /// A globally unique identifier.
+    Guid,
+    /// A language tag.
+    Locale,
+    /// A MIME type.
+    MimeType,
+    /// The name of a person or organization.
+    ProperName,
+    /// The name of a rendition of a document.
+    RenditionClass,
+    /// A URI.
+    Uri,
+    /// A URL.
+    Url,
+    /// A rational number, written as `numerator/denominator`.
+    Rational,
+    /// A frame rate, written as `f<frames>` or `f<frames>s<basis>`.
+    FrameRate,
+    /// A number of frames at a given frame rate.
+    FrameCount,
+    /// A path identifying a portion of a resource, e.g. `/content/audio`.
+    Part,
+    /// An XPath expression.
+    XPath,
+}
+
+impl SimpleType {
+    /// The name of the type in a PDF/A extension schema description.
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Text => "Text",
+            Self::Boolean => "Boolean",
+            Self::Integer => "Integer",
+            Self::Real => "Real",
+            Self::Date => "Date",
+            Self::AgentName => "AgentName",
+            Self::Guid => "GUID",
+            Self::Locale => "Locale",
+            Self::MimeType => "MIMEType",
+            Self::ProperName => "ProperName",
+            Self::RenditionClass => "RenditionClass",
+            Self::Uri => "URI",
+            Self::Url => "URL",
+            Self::Rational => "Rational",
+            Self::FrameRate => "FrameRate",
+            Self::FrameCount => "FrameCount",
+            Self::Part => "Part",
+            Self::XPath => "XPath",
+        }
+    }
 }
 
 /// Whether a property is generated internally or supplied externally.
@@ -208,7 +364,10 @@ impl std::fmt::Display for XmpError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             XmpError::ConflictingNamespace(uri) => {
-                write!(f, "the namespace {uri} was declared with multiple different prefixes")
+                write!(
+                    f,
+                    "the namespace {uri} was declared with multiple different prefixes"
+                )
             }
             XmpError::ConflictingPrefix(prefix) => {
                 write!(
